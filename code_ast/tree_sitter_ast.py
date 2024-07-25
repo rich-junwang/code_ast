@@ -36,22 +36,23 @@ class SourceCodeAST:
         lang = self.config.lang
         lang_name = "".join((lang_part[0].upper() + lang_part[1:] for lang_part in lang.split("-")))
 
-        ast_repr = ast_to_str(self.source_tree, indent = 1)
+        ast_repr = ast_to_str(self.source_tree, indent=1)
 
         return f"{lang_name}CodeAST [0, 0] - [{len(self.source_lines)}, {len(self.source_lines[-1])}]\n{ast_repr}"
 
 
 # AST to readable ----------------------------------------------------------------
-
 LEAVE_WHITELIST = {"identifier", "integer", "float"}
+
 
 def _serialize_node(node):
     return f"{node.type} [{node.start_point[0]}, {node.start_point[1]}] - [{node.end_point[0]}, {node.end_point[1]}]"
 
-def ast_to_str(tree, indent = 0):
+
+def ast_to_str(tree, indent=0):
     ast_lines = []
     root_node = tree.root_node
-    cursor    = root_node.walk()
+    cursor = root_node.walk()
 
     has_next = True
 
@@ -59,7 +60,7 @@ def ast_to_str(tree, indent = 0):
         current_node = cursor.node
 
         if current_node.child_count > 0 or current_node.type in LEAVE_WHITELIST:
-            ast_lines.append("    "*indent + _serialize_node(current_node))
+            ast_lines.append("    " * indent + _serialize_node(current_node))
 
         # Step 1: Try to go to next child if we continue the subtree
         if cursor.goto_first_child():

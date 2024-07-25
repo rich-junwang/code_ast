@@ -33,13 +33,14 @@ def ast_parser(source_code, lang="guess", **kwargs):
     -------
     Root
         root of AST tree as parsed by tree-sitter
-    
     """
 
-    if len(source_code.strip()) == 0: raise ValueError("The code string is empty. Cannot tokenize anything empty: %s" % source_code) 
+    if len(source_code.strip()) == 0:
+        raise ValueError("The code string is empty. Cannot tokenize anything empty: %s" % source_code)
 
     # If lang == guess, automatically determine the language
-    if lang == "guess": lang = _lang_detect(source_code)
+    if lang == "guess":
+        lang = _lang_detect(source_code)
 
     logger.debug("Parses source code with parser for %s" % lang)
 
@@ -51,7 +52,7 @@ def ast_parser(source_code, lang="guess", **kwargs):
     tree, code = parser.parse(source_code)
 
     # Check for errors if necessary
-    check_tree_for_errors(tree, mode = config.syntax_error)
+    check_tree_for_errors(tree, mode=config.syntax_error)
 
     return SourceCodeAST(config, tree, code)
 

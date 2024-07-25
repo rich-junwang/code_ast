@@ -26,4 +26,3 @@ class ParserConfig:
                 elements.append("%s=%s" % (k, v))
         
         return "Config(%s)" % ", ".join(elements)
-

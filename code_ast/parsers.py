@@ -14,10 +14,10 @@ import logging as logger
 import importlib
 # For autoloading
 import requests
+from git import Repo
 
 
 # Automatic loading of Tree-Sitter parsers --------------------------------
-
 def load_language(lang):
     """
     Loads a language specification object necessary for tree-sitter.
@@ -43,15 +43,14 @@ def load_language(lang):
         language specification object
 
     """
-
     cache_path = _path_to_local()
-    
+
     compiled_lang_path = os.path.join(cache_path, "%s-lang.so" % lang)
-    source_lang_path   = os.path.join(cache_path, "tree-sitter-%s" % lang)
+    source_lang_path = os.path.join(cache_path, "tree-sitter-%s" % lang)
 
     if os.path.isfile(compiled_lang_path):
         return Language(compiled_lang_path, _lang_to_fnname(lang))
-    
+
     if os.path.exists(source_lang_path) and os.path.isdir(source_lang_path):
         logger.warn("Compiling language for %s" % lang)
         _compile_lang(source_lang_path, compiled_lang_path)
@@ -61,16 +60,13 @@ def load_language(lang):
     _clone_parse_def_from_github(lang, source_lang_path)
     return load_language(lang)
 
-# Parser ---------------------------------------------------------------
 
-
+# Parser
 class ASTParser:
     """
     Wrapper for tree-sitter AST parser
-
     Supports autocompiling the language specification needed 
     for parsing (see load_language)
-
     """
 
     def __init__(self, lang):
@@ -84,7 +80,6 @@ class ASTParser:
             Same as for load_language
         
         """
-
         self.lang_id = lang
         # self.lang    = load_language(lang)
         # self.parser  = Parser()
@@ -111,7 +106,6 @@ class ASTParser:
     def parse(self, source_code):
         """
         Parses source code into AST
-
         Parameters
         ----------
         source_code : str
@@ -126,14 +120,13 @@ class ASTParser:
             a list of code lines for reference
 
         """
-        source_lines = source_code.splitlines()
+        source_lines = source_code.splitlines(keepends=True)
         source_bytes = source_code.encode("utf-8")
 
         return self.parse_bytes(source_bytes), source_lines
 
 
 # Utils ------------------------------------------------
-
 def match_span(source_tree, source_lines):
     """
     Greps the source text represented by the given source tree from the original code
@@ -152,39 +145,39 @@ def match_span(source_tree, source_lines):
         the source code that is represented by the given source tree
     
     """
-    
+
     start_line, start_char = source_tree.start_point
-    end_line,   end_char   = source_tree.end_point
+    end_line, end_char = source_tree.end_point
 
     assert start_line <= end_line
     assert start_line != end_line or start_char <= end_char
 
-    source_area     = source_lines[start_line:end_line + 1]
-    
+    source_area = source_lines[start_line:end_line + 1]
+
     if start_line == end_line:
         return source_area[0][start_char:end_char]
     else:
-        source_area[0]  = source_area[0][start_char:]
+        source_area[0] = source_area[0][start_char:]
         source_area[-1] = source_area[-1][:end_char]
         return "\n".join(source_area)
 
 
 # Auto Load Languages --------------------------------------------------
-
 PATH_TO_LOCALCACHE = None
+
 
 def _path_to_local():
     global PATH_TO_LOCALCACHE
-    
+
     if PATH_TO_LOCALCACHE is None:
         current_path = os.path.abspath(__file__)
-        
+
         while os.path.basename(current_path) != "code_ast":
             current_path = os.path.dirname(current_path)
-        
-        current_path = os.path.dirname(current_path) # Top dir
+
+        current_path = os.path.dirname(current_path)  # Top dir
         PATH_TO_LOCALCACHE = os.path.join(current_path, "build")
-        
+
     return PATH_TO_LOCALCACHE
 
 
@@ -208,14 +201,13 @@ def _lang_to_fnname(lang):
 
 
 # Auto Clone from Github --------------------------------
-    
+
 def _exists_url(url):
     req = requests.get(url)
     return req.status_code == 200
 
 
 def _clone_parse_def_from_github(lang, cache_path):
-    
     # Start by testing whethe repository exists
     REPO_URL = "https://github.com/tree-sitter/tree-sitter-%s" % lang
 
@@ -223,15 +215,7 @@ def _clone_parse_def_from_github(lang, cache_path):
         raise ValueError("There is no parsing def for language %s available." % lang)
 
     logger.warn("Start cloning the parser definition from Github.")
-    try:  
+    try:
         Repo.clone_from(REPO_URL, cache_path)
     except Exception:
         raise ValueError("To autoload a parsing definition, git needs to be installed on the system!")
-
-
-
-
-
-
-
-

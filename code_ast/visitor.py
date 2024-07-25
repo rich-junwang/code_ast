@@ -1,14 +1,5 @@
-"""
-AST Visitors
-
-Can be directly executed on AST structures
-"""
-
-
 class ASTVisitor:
-
     # Decreased version of visit (no edges are supported) -----------------------
-
     def visit(self, node):
         """
         Default visitor function
@@ -38,8 +29,8 @@ class ASTVisitor:
 
     def walk(self, root_node):
         if root_node is None: return
-        
-        cursor   = root_node.walk()
+
+        cursor = root_node.walk()
         has_next = True
 
         while has_next:
@@ -57,10 +48,9 @@ class ASTVisitor:
 
             # Step 3: Go up until sibling exists
             while not has_next and cursor.goto_parent():
-                self.on_leave(cursor.node) # We will never return back to this specific parent
+                self.on_leave(cursor.node)  # We will never return back to this specific parent
                 has_next = cursor.goto_next_sibling()
 
-                
     def __call__(self, root_node):
         return self.walk(root_node)
 
@@ -100,8 +90,8 @@ class ResumingVisitorComposition(ASTVisitor):
         self.visitors = visitors
 
         self.__active_visitors = [True] * len(visitors)
-        self.__resume_on       = {}
-    
+        self.__resume_on = {}
+
     def on_visit(self, node):
         for pos, base_visitor in enumerate(self.visitors):
             if not self.__active_visitors[pos]: continue
@@ -112,7 +102,6 @@ class ResumingVisitorComposition(ASTVisitor):
 
         return any(self.__active_visitors)
 
-    
     def on_leave(self, node):
         for pos, base_visitor in enumerate(self.visitors):
             if not self.__active_visitors[pos]:
@@ -121,6 +110,5 @@ class ResumingVisitorComposition(ASTVisitor):
                     self.__active_visitors[pos] = True
                 else:
                     continue
-            
-            base_visitor.on_leave(node)
 
+            base_visitor.on_leave(node)

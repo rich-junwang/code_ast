@@ -6,14 +6,13 @@ from parsers import match_span
 
 
 class ASTTransformer(ASTVisitor):
-    
+
     def __init__(self):
         super().__init__()
-        self.code_lines    = None
-        self._edit_trees       = []
+        self.code_lines = None
+        self._edit_trees = []
 
     # Code processing functions --------------------------------
-
     def from_code_lines(self, code_lines):
         self.code_lines = code_lines
 
@@ -31,7 +30,7 @@ class ASTTransformer(ASTVisitor):
             node_update = TextUpdate(node_update)
 
         num_children = original_node.child_count
-        child_trees  = [self._edit_trees.pop(-1) for _ in range(num_children)][::-1]
+        child_trees = [self._edit_trees.pop(-1) for _ in range(num_children)][::-1]
 
         if node_update is None or not isinstance(node_update, EditUpdate):
             self._edit_trees.append(EditTree(original_node, None, child_trees))
@@ -41,13 +40,12 @@ class ASTTransformer(ASTVisitor):
 
 
 # Minimal edit tree ------------------------------------------------------------
-
 class EditTree:
 
-    def __init__(self, source_node, target_edit = None, children = []):
+    def __init__(self, source_node, target_edit=None, children=[]):
         self.source_node = source_node
         self.target_edit = target_edit
-        self.children    = children
+        self.children = children
 
         for c in children:
             if c.target_edit is None: c.children = []
@@ -61,12 +59,12 @@ class EditTree:
     def __repr__(self):
         return "\n".join(_edit_to_str(self))
 
-# Edit operations ----------------------------------------------------------------
 
+# Edit operations ----------------------------------------------------------------
 @dataclass
 class EditUpdate:
-    
-    def compile(self, sub_edits = None, code_lines = None):
+
+    def compile(self, sub_edits=None, code_lines=None):
         return ""
 
     @property
@@ -81,25 +79,26 @@ class SubtreeUpdate(EditUpdate):
 
 @dataclass
 class TextUpdate(EditUpdate):
-    text : str
+    text: str
 
-    def compile(self, sub_edits = None, code_lines = None):
+    def compile(self, sub_edits=None, code_lines=None):
         return self.text
+
 
 @dataclass
 class NodeUpdate(EditUpdate):
-    node : Any
+    node: Any
 
-    def compile(self, sub_edits = None, code_lines = None):
+    def compile(self, sub_edits=None, code_lines=None):
         return match_span(self.node, code_lines)
 
 
 @dataclass
 class TreeUpdate(EditUpdate):
-    node : Any
+    node: Any
 
-    def compile(self, sub_edits = None, code_lines = None):
-        
+    def compile(self, sub_edits=None, code_lines=None):
+
         for sub_edit in sub_edits:
             if sub_edit.target_edit is None: continue
             if sub_edit.source_node == self.node:
@@ -112,12 +111,12 @@ class TreeUpdate(EditUpdate):
 
 @dataclass
 class FormattedUpdate(EditUpdate):
-    format_str : str
-    args       : List[EditUpdate]
+    format_str: str
+    args: List[EditUpdate]
 
-    def compile(self, sub_edits = None, code_lines = None):
-        args = tuple(arg.compile(sub_edits, code_lines) 
-                        for arg in self.args)
+    def compile(self, sub_edits=None, code_lines=None):
+        args = tuple(arg.compile(sub_edits, code_lines)
+                     for arg in self.args)
         return self.format_str % args
 
 
@@ -131,32 +130,30 @@ def _serialize_tree(edit_tree):
     return f"{source.type} -> {edit_tree.target_edit.type} [{source.start_point[0]}, {source.start_point[1]}] - [{source.end_point[0]}, {source.end_point[1]}]"
 
 
-def _edit_to_str(edit_tree, indent = 0):
+def _edit_to_str(edit_tree, indent=0):
     str_lines = []
     if edit_tree.target_edit is None: return []
 
     str_lines.append(
         "    " * indent + _serialize_tree(edit_tree)
     )
-    str_lines.extend([l for c in edit_tree.children for l in _edit_to_str(c, indent = indent + 1)])
+    str_lines.extend([l for c in edit_tree.children for l in _edit_to_str(c, indent=indent + 1)])
 
-    return  str_lines
-
+    return str_lines
 
 
 # A simple edit executor --------------------------------------------------------
-
 class EditExecutor:
 
     def __init__(self, edit_tree, code_lines):
         self.code_lines = code_lines
 
-        self._edit_stack   = [edit_tree]
+        self._edit_stack = [edit_tree]
         self._target_lines = []
 
         # Cursors
-        self._cursor       = (0, 0)
-        self._delay_move   = (0, 0)
+        self._cursor = (0, 0)
+        self._delay_move = (0, 0)
 
     def _move_cursor(self, position):
         assert position >= self._cursor
@@ -167,7 +164,7 @@ class EditExecutor:
             else:
                 add_part = self.code_lines[self._cursor[0]][self._cursor[1]:]
                 self._target_lines.append(add_part)
-            
+
             self._target_lines.append("\n")
             self._cursor = (self._cursor[0] + 1, 0)
 
@@ -181,7 +178,7 @@ class EditExecutor:
         self._delay_move = position
 
     def _execute_noop(self, edit_tree):
-        node     = edit_tree.source_node
+        node = edit_tree.source_node
         node_end = node.end_point
         self._delay_cursor(node_end)
 
@@ -190,7 +187,7 @@ class EditExecutor:
         if edit_tree.target_edit is None:
             self._execute_noop(edit_tree)
             return
-        
+
         if edit_tree.target_edit.type == "SubtreeUpdate":
             self._edit_stack.extend(edit_tree.children[::-1])
             return
@@ -201,14 +198,14 @@ class EditExecutor:
 
         self._cursor = edit_tree.source_node.end_point
         self._target_lines.append(
-                edit_tree.target_edit.compile(
-                    edit_tree.children, 
-                    self.code_lines
-                )
+            edit_tree.target_edit.compile(
+                edit_tree.children,
+                self.code_lines
+            )
         )
 
     def walk(self):
-        
+
         while len(self._edit_stack) > 0:
             self._execute(self._edit_stack.pop(-1))
 
