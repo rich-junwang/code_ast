@@ -1,8 +1,13 @@
+import numpy as np
 import logging as logger
 from config import ParserConfig
 from tree_sitter_ast import SourceCodeAST
 from parsers import ASTParser
 from visitor import ASTVisitor
+
+
+META_TYPES = ["string", "docstring",
+              "comment", "class_definition", "function_definition"]
 
 
 def ast_parser(source_code, lang="guess", **kwargs):
@@ -83,8 +88,9 @@ class ErrorVisitor(ASTVisitor):
             return
 
 
-def check_tree_for_errors(tree, mode = "raise"):
-    if mode == "ignore": return
+def check_tree_for_errors(tree, mode="raise"):
+    if mode == "ignore":
+        return
 
     # Check for errors
     ErrorVisitor(mode)(tree)
@@ -92,9 +98,8 @@ def check_tree_for_errors(tree, mode = "raise"):
 
 # Error handling -----------------------------------------------------------
 def _construct_error_msg(node):
-
     start_line, start_char = node.start_point
-    end_line, end_char     = node.end_point
+    end_line, end_char = node.end_point
 
     position = "?"
     if start_line == end_line:
@@ -113,11 +118,47 @@ def raise_syntax_error(node):
     raise SyntaxError(_construct_error_msg(node))
 
 
+def get_all_components(root_node):
+    subtree_roots = []
+    if not root_node:
+        return subtree_roots
+
+    while len(root_node.children) == 1:
+        root_node = root_node.children[0]
+
+    if root_node.type in META_TYPES or root_node.type.endswith("_statement"):
+        return [root_node]
+    children = root_node.children
+
+    for i, child in enumerate(children):
+        if len(child.children) == 0 or child.type in META_TYPES or root_node.type.endswith("_statement"):
+            subtree_roots.append(child)
+        else:
+            subtree_roots.extend(get_all_components(child))
+    return subtree_roots
+
+
 if __name__ == "__main__":
-    test_ast = ast_parser(
-        '''
-            def my_func():
-                print("Hello World")
-        ''',
-        lang="python")
-    print(test_ast)
+    s = '''
+import torch
+import numpy as np
+
+
+def my_func():
+    print("Hello World")
+
+class GraphAlgos:
+
+    @staticmethod
+    def topo_sort(graph: nx.DiGraph) -> List:
+        return list(nx.topological_sort(graph))
+'''
+    lang = "python"
+    config = ParserConfig(lang)
+    parser = ASTParser(lang)
+    tree, code = parser.parse(s)
+    print(SourceCodeAST(config, tree, code))
+    # test_ast = ast_parser(s, lang=lang)
+    nodes = get_all_components(tree.root_node)
+    for n in nodes:
+        print(n.text)
